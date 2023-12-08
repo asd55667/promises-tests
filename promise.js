@@ -1,8 +1,8 @@
 
 const PromiseState = {
-    Pending: 0,
-    FullFilled: 1,
-    Rejected: 2
+    Pending: 'pending',
+    FullFilled: 'fullfilled',
+    Rejected: 'rejected'
 }
 
 class MyPromise {
@@ -11,23 +11,28 @@ class MyPromise {
     }
 
     then(resolve, reject) {
-        // 
+        if (this.state === PromiseState.FullFilled) {
+            resolve?.()
+        } else if (this.state === PromiseState.Rejected) {
+            reject?.()
+        }
+        return this
     }
 
     resolve() {
-        // 
+        this.state = PromiseState.FullFilled
     }
 
     reject() {
-        // 
+        this.state = PromiseState.Rejected
     }
 
     static deferred() {
         const promise = new MyPromise()
         return {
             promise,
-            resolve: promise.resolve,
-            reject: promise.reject
+            resolve: promise.resolve.bind(promise),
+            reject: promise.reject.bind(promise)
         }
     }
 }
