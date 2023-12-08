@@ -6,25 +6,46 @@ const PromiseState = {
 }
 
 class MyPromise {
+    value
+    tasks = []
     constructor(state = PromiseState.Pending) {
         this.state = state
     }
 
     then(resolve, reject) {
-        if (this.state === PromiseState.FullFilled) {
-            resolve?.()
-        } else if (this.state === PromiseState.Rejected) {
-            reject?.()
+        const task = () => {
+            if (this.state === PromiseState.FullFilled) {
+                try {
+                    resolve?.(this.value)
+                } catch (err) {
+                    this.value = err
+                }
+            } else if (this.state === PromiseState.Rejected) {
+                try {
+                    reject(this.value)
+                } catch (err) {
+                    this.value = err
+                }
+            }
         }
+        if (this.state === PromiseState.Pending) this.tasks.push(task)
+        else setTimeout(task)
         return this
     }
 
-    resolve() {
-        this.state = PromiseState.FullFilled
+    resolve(value) {
+        this.#update(value, PromiseState.FullFilled);
     }
 
-    reject() {
-        this.state = PromiseState.Rejected
+    reject(value) {
+        this.#update(value, PromiseState.Rejected);
+    }
+
+    #update(value, state) {
+        if (this.state !== PromiseState.Pending) return
+        this.value = value
+        this.state = state
+        this.tasks.forEach(task => setTimeout(task))
     }
 
     static deferred() {
