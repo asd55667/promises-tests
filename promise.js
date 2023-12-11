@@ -24,19 +24,28 @@ class MyPromise {
             }
         }
 
+        const handleX = (p, x) => {
+            if (x === p) p.#reject(new TypeError(`${this}`))
+            else if (x instanceof MyPromise) {
+                x.then((value) => {
+                    p.#resolve(value)
+                }, (reason) => {
+                    p.#reject(reason)
+                })
+            } else p.#resolve(x)
+        }
+
         const task = () => {
             if (this.state === PromiseState.FullFilled) {
                 handleCallback(() => {
                     const x = isFunc(resolve) ? resolve(this.value) : this.value
-                    if (x === p) p.#reject(new TypeError(`${this}`))
-                    else p.#resolve(x)
+                    handleX(p, x)
                 })
             } else if (this.state === PromiseState.Rejected) {
                 handleCallback(() => {
                     if (isFunc(reject)) {
                         const x = reject(this.value)
-                        if (x === p) p.#reject(new TypeError(`${this}`))
-                        else p.#resolve(x)
+                        handleX(p, x)
                     } else p.#reject(this.value)
                 })
 
@@ -79,6 +88,10 @@ class MyPromise {
 
 function isFunc(fn) {
     return typeof fn === 'function'
+}
+
+function isObj(obj) {
+    return typeof obj === 'object'
 }
 
 module.exports = MyPromise
