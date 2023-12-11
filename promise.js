@@ -23,15 +23,20 @@ class MyPromise {
                 p.#reject(err)
             }
         }
+
         const task = () => {
             if (this.state === PromiseState.FullFilled) {
                 handleCallback(() => {
-                    p.#resolve(isFunc(resolve) ? resolve(this.value) : this.value)
+                    const x = isFunc(resolve) ? resolve(this.value) : this.value
+                    if (x === p) p.#reject(new TypeError(`${this}`))
+                    else p.#resolve(x)
                 })
             } else if (this.state === PromiseState.Rejected) {
                 handleCallback(() => {
                     if (isFunc(reject)) {
-                        p.#resolve(reject(this.value))
+                        const x = reject(this.value)
+                        if (x === p) p.#reject(new TypeError(`${this}`))
+                        else p.#resolve(x)
                     } else p.#reject(this.value)
                 })
 
