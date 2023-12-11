@@ -1,4 +1,3 @@
-
 const PromiseState = {
     Pending: 'pending',
     FullFilled: 'fullfilled',
@@ -19,16 +18,23 @@ class MyPromise {
 
         const handleCallback = (callback) => {
             try {
-                p.resolve(callback(this.value))
+                callback()
             } catch (err) {
-                p.reject(err)
+                p.#reject(err)
             }
         }
         const task = () => {
             if (this.state === PromiseState.FullFilled) {
-                handleCallback((value) => resolve?.(value))
+                handleCallback(() => {
+                    p.#resolve(isFunc(resolve) ? resolve(this.value) : this.value)
+                })
             } else if (this.state === PromiseState.Rejected) {
-                handleCallback((value) => reject(value))
+                handleCallback(() => {
+                    if (isFunc(reject)) {
+                        p.#resolve(reject(this.value))
+                    } else p.#reject(this.value)
+                })
+
             }
         }
 
@@ -37,11 +43,11 @@ class MyPromise {
         return p
     }
 
-    resolve(value) {
+    #resolve(value) {
         this.#update(value, PromiseState.FullFilled);
     }
 
-    reject(value) {
+    #reject(value) {
         this.#update(value, PromiseState.Rejected);
     }
 
@@ -60,10 +66,14 @@ class MyPromise {
         const promise = new MyPromise(() => { })
         return {
             promise,
-            resolve: promise.resolve.bind(promise),
-            reject: promise.reject.bind(promise)
+            resolve: promise.#resolve.bind(promise),
+            reject: promise.#reject.bind(promise)
         }
     }
+}
+
+function isFunc(fn) {
+    return typeof fn === 'function'
 }
 
 module.exports = MyPromise
