@@ -11,6 +11,13 @@ class MyPromise {
     constructor(callback) {
         if (typeof callback !== 'function')
             throw new TypeError(`Promise resolver ${typeof callback} is not a function`);
+
+        try {
+            callback(this.#resolve.bind(this), this.#reject.bind(this))
+        } catch (err) {
+            return this.#reject(err)
+        }
+        return this
     }
 
     then(resolve, reject) {
@@ -28,10 +35,27 @@ class MyPromise {
             if (x === p) p.#reject(new TypeError(`${this}`))
             else if (x instanceof MyPromise) {
                 x.then((value) => {
-                    p.#resolve(value)
+                    handleX(p, value)
                 }, (reason) => {
                     p.#reject(reason)
+                }).then(null, (reason) => {
+                    p.#reject(reason)
                 })
+            } else if (isFunc(x) || isObj(x)) {
+                const then = x?.then
+                if (isFunc(then)) {
+                    new MyPromise(then.bind(x))
+                        .then(
+                            (value) => {
+                                handleCallback(() => {
+                                    handleX(p, value)
+                                })
+                            },
+                            (reason) => { p.#reject(reason) }
+                        )
+                } else {
+                    p.#resolve(x)
+                }
             } else p.#resolve(x)
         }
 
