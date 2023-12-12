@@ -20,62 +20,60 @@ class MyPromise {
         return this
     }
 
+    #handleCallback(p, callback) {
+        try {
+            callback()
+        } catch (err) {
+            p.#reject(err)
+        }
+    }
+
+    #handleX(p, x) {
+        if (x === p) p.#reject(new TypeError(`${this}`))
+        else if (x instanceof MyPromise) {
+            x.then((value) => {
+                this.#handleX(p, value)
+            }, (reason) => {
+                p.#reject(reason)
+            }).then(null, (reason) => {
+                p.#reject(reason)
+            })
+        } else if (isFunc(x) || isObj(x)) {
+            const then = x?.then
+            if (isFunc(then)) {
+                new MyPromise(then.bind(x))
+                    .then(
+                        (value) => {
+                            this.#handleCallback(p, () => {
+                                this.#handleX(p, value)
+                            })
+                        },
+                        (reason) => { p.#reject(reason) }
+                    )
+            } else {
+                p.#resolve(x)
+            }
+        } else p.#resolve(x)
+    }
+
     then(resolve, reject) {
         const p = new MyPromise(() => { })
-
-        const handleCallback = (callback) => {
-            try {
-                callback()
-            } catch (err) {
-                p.#reject(err)
-            }
-        }
-
-        const handleX = (p, x) => {
-            if (x === p) p.#reject(new TypeError(`${this}`))
-            else if (x instanceof MyPromise) {
-                x.then((value) => {
-                    handleX(p, value)
-                }, (reason) => {
-                    p.#reject(reason)
-                }).then(null, (reason) => {
-                    p.#reject(reason)
-                })
-            } else if (isFunc(x) || isObj(x)) {
-                const then = x?.then
-                if (isFunc(then)) {
-                    new MyPromise(then.bind(x))
-                        .then(
-                            (value) => {
-                                handleCallback(() => {
-                                    handleX(p, value)
-                                })
-                            },
-                            (reason) => { p.#reject(reason) }
-                        )
-                } else {
-                    p.#resolve(x)
-                }
-            } else p.#resolve(x)
-        }
-
         const task = () => {
             if (this.state === PromiseState.FullFilled) {
-                handleCallback(() => {
+                this.#handleCallback(p, () => {
                     const x = isFunc(resolve) ? resolve(this.value) : this.value
-                    handleX(p, x)
+                    this.#handleX(p, x)
                 })
             } else if (this.state === PromiseState.Rejected) {
-                handleCallback(() => {
+                this.#handleCallback(p, () => {
                     if (isFunc(reject)) {
                         const x = reject(this.value)
-                        handleX(p, x)
+                        this.#handleX(p, x)
                     } else p.#reject(this.value)
                 })
 
             }
         }
-
         if (this.state === PromiseState.Pending) this.tasks.push(task)
         else setTimeout(task)
         return p
